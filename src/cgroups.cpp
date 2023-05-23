@@ -4,17 +4,17 @@
 #include <string>
 #include <iostream>
 
+#define busname "org.freedesktop.systemd1"
+#define objectpath "/org/freedesktop/systemd1"
+#define interface "org.freedesktop.systemd1.Manager"
 
-int add_pids_to_new_cgroup(std::vector<uint32_t> pids, std::string cgroup_name)
+int add_pids_to_new_cgroup(std::vector<uint32_t> pids, std::string cgroup_name, double cpu_limit)
 {
     // https://www.freedesktop.org/wiki/Software/systemd/ControlGroupInterface/
     // https://unix.stackexchange.com/questions/525740/how-do-i-create-a-systemd-scope-for-an-already-existing-process-from-the-command
     // call freedesktop.systemd1.Manager StartTransientUnit with the PIDs
     // ssa(sv)a(sa(sv))
 
-    const char* busname = "org.freedesktop.systemd1";
-    const char* objectpath = "/org/freedesktop/systemd1";
-    const char* interface = "org.freedesktop.systemd1.Manager";
     const char* method = "StartTransientUnit";
 
     // create a proxy object using a system bus connection
@@ -40,8 +40,10 @@ int add_pids_to_new_cgroup(std::vector<uint32_t> pids, std::string cgroup_name)
     auto props_array = std::vector<sdbus::Struct<std::string, sdbus::Variant>>({pid_props});
     // limit CPU
     // 200 ms, or 20% of one cpu
-    double percent = 1.0;
-    unsigned long quota = percent * 1000000; // if percent=0.2, then quota=200000
+    unsigned long quota = cpu_limit * 1000000; // if percent=0.2, then quota=200000
+    unsigned long max_quota = UINT64_MAX;
+    if (cpu_limit == 0)
+        quota = max_quota;
     props_array.push_back(sdbus::Struct<std::string, sdbus::Variant>("CPUQuotaPerSecUSec", quota));
     method_call << props_array;
 
@@ -54,4 +56,84 @@ int add_pids_to_new_cgroup(std::vector<uint32_t> pids, std::string cgroup_name)
     std::cout<<"Method called."<<std::endl;
 
     return 0;
+}
+
+bool updatecgroup(std::vector<uint32_t> pids, std::string unitpath, double cpu_limit)
+{
+    const char *method = "SetUnitProperties";
+    // sba(sv)
+    // s: name, b: runtime, a(sv): properties
+    // runtime controls whether the changes are saved to disk
+    // if true, don't save to disk
+
+    auto connection = sdbus::createSystemBusConnection();
+    auto proxy = sdbus::createProxy(*connection, busname, objectpath);
+    auto method_call = proxy->createMethodCall(interface, method);
+
+    method_call << unitpath << true;
+
+    // as an aside: setting PIDs is an append operation
+    // to clear the PIDs, set it to an empty array first, then append
+
+    // auto pid_props = sdbus::Struct<std::string, std::vector<unsigned int>>("PIDs", pids);
+    // auto props_array = std::vector<sdbus::Struct<std::string, sdbus::Variant>>({pid_props});
+    auto props_array = std::vector<sdbus::Struct<std::string, sdbus::Variant>>();
+    // set to 100% of one cpu
+    unsigned long quota = cpu_limit * 1000000; // if percent=0.2, then quota=200000
+    // props_array.push_back(sdbus::Struct<std::string, sdbus::Variant>("CPUQuotaPerSecUSec", quota));
+    // to disable CPU limits, set quota to max 64 bit unsigned long
+    unsigned long max_quota = UINT64_MAX;
+    if (cpu_limit == 0)
+        quota = max_quota;
+    props_array.push_back(sdbus::Struct<std::string, sdbus::Variant>("CPUQuotaPerSecUSec", quota));
+    method_call << props_array;
+
+    auto result = proxy->callMethod(method_call);
+
+    return true;
+}
+
+std::string getunitpath(std::string name)
+{
+    const char *method = "GetUnit";
+    auto connection = sdbus::createSystemBusConnection();
+    auto proxy = sdbus::createProxy(*connection, busname, objectpath);
+    auto method_call = proxy->createMethodCall(interface, method);
+
+    // arguments: s
+
+    method_call << name;
+    sdbus::ObjectPath path;
+
+    try
+    {
+
+        auto result = proxy->callMethod(method_call);
+        // output: o
+        // o is the object path of the unit
+        result >> path;
+        std::cout << "Unit path: " << std::string(path) << std::endl;
+        return std::string(path);
+    }
+    catch (sdbus::Error &e)
+    {
+        // if the unit doesn't exist, the call will fail
+        // make sure the error is "org.freedesktop.systemd1.NoSuchUnit"
+        if (e.getName() == "org.freedesktop.systemd1.NoSuchUnit")
+        {
+            std::cout << "Unit does not exist: " << name << std::endl;
+            return "";
+        }
+        else
+        {
+            std::cout << "Error: " << e.getName() << std::endl;
+            std::cout << e.getMessage() << std::endl;
+            return "";
+        }
+    }
+}
+
+bool doesunitexist(std::string name)
+{
+    return getunitpath(name) != "";
 }
