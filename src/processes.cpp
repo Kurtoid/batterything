@@ -154,3 +154,26 @@ std::set<uint32_t> getallchildren(std::set<uint32_t> pids)
     }
     return childrenpids;
 }
+
+std::pair<std::filesystem::path, std::string> getapppath(std::string apppath)
+{
+    std::filesystem::path apppathpath(apppath);
+    // follow symlinks
+
+    std::filesystem::path apppathpathreal = apppathpath;
+    while (std::filesystem::is_symlink(apppathpathreal))
+    {
+        apppathpathreal = std::filesystem::read_symlink(apppathpathreal);
+    }
+    // symlink might be relative, so make it absolute. if it is relative, it's relative to the symlink's directory
+    if (!apppathpathreal.is_absolute())
+    {
+        apppathpathreal = apppathpath.parent_path() / apppathpathreal;
+        apppathpathreal = std::filesystem::canonical(apppathpathreal);
+    }
+    // get application name
+    std::string appname = apppathpathreal.filename().string();
+    // make appname lowercase
+    std::transform(appname.begin(), appname.end(), appname.begin(), ::tolower);
+    return std::make_pair(apppathpathreal, appname);
+}

@@ -73,7 +73,7 @@ unsigned long WindowFocusDetector::getActiveWindowPID()
     return pid;
 }
 
-int main()
+int windowfocus_main()
 {
     std::cout << "window focus demo" << std::endl;
     WindowFocusDetector detector;

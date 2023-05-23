@@ -32,11 +32,23 @@ target_link_libraries(battery_thing PUBLIC
     Qt::Widgets
 )
 
-
-add_executable(windowfocus ${CMAKE_CURRENT_SOURCE_DIR}/src/windowfocus.cpp)
+add_library(windowfocus ${CMAKE_CURRENT_SOURCE_DIR}/src/windowfocus.cpp)
 target_link_libraries(windowfocus PUBLIC
 X11
 )
+
+add_executable(background_mode ${CMAKE_CURRENT_SOURCE_DIR}/src/background_mode.cpp)
+target_link_libraries(background_mode PUBLIC
+    battery_thing_cgroups
+    processes
+    windowfocus
+    Qt::Core
+    Qt::Gui
+    Qt::UiTools
+    Qt::Widgets
+)
+
+
 
 # add_library(battery_thing_ui ${CMAKE_CURRENT_SOURCE_DIR}/src/battery_thing_ui.cpp)
 # target_link_libraries(battery_thing_ui PUBLIC

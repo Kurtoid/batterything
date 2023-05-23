@@ -45,25 +45,12 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    std::string apppath = parser.positionalArguments()[0].toStdString();
+    std::string apppath_in = parser.positionalArguments()[0].toStdString();
     std::string cpulimit = parser.value(cpuLimit).toStdString();
 
-    std::filesystem::path apppathpath(apppath);
-    // follow symlinks
-
-    std::filesystem::path apppathpathreal = apppathpath;
-    while (std::filesystem::is_symlink(apppathpathreal))
-    {
-        apppathpathreal = std::filesystem::read_symlink(apppathpathreal);
-    }
-    // symlink might be relative, so make it absolute. if it is relative, it's relative to the symlink's directory
-    if (!apppathpathreal.is_absolute())
-    {
-        apppathpathreal = apppathpath.parent_path() / apppathpathreal;
-        apppathpathreal = std::filesystem::canonical(apppathpathreal);
-    }
-    // get application name
-    std::string appname = apppathpathreal.filename().string();
+    std::pair<std::filesystem::path, std::string> apppaths = getapppath(apppath_in);
+    std::filesystem::path apppathpathreal = apppaths.first;
+    std::string appname = apppaths.second;
 
     std::string unitname = "batterything-" + appname + ".scope";
 
