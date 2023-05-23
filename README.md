@@ -1,3 +1,2 @@
 # batterything
-not usable yet; WIP
-
+demo sort of works now, but battery detection doesn't exist yet
