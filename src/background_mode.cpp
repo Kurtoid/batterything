@@ -1,12 +1,19 @@
 #include "windowfocus.hpp"
 #include "cgroups.hpp"
 #include "processes.hpp"
+#include "plogformatter.hpp"
 #include <iostream>
 #include <vector>
 #include <string>
 #include <map>
 #include <thread>
 #include <chrono>
+// signal handling
+#include <csignal>
+#define PLOG_CAPTURE_FILE
+#include <plog/Init.h>
+#include <plog/Log.h>
+#include <plog/Appenders/ColorConsoleAppender.h>
 
 std::vector<std::string> apps = {};
 std::vector<std::string> appnames = {};
@@ -20,45 +27,70 @@ void update_pids()
         std::set<uint32_t> pids = getpidsforexec(app);
         std::set<uint32_t> all_pids = getallchildren(pids);
         all_pids.insert(pids.begin(), pids.end());
-        app_pids[app] = all_pids;
+
+        PLOG_INFO << "Found " << all_pids.size() << " PIDs for " << app;
+        std::string pids_str = "";
+        for (auto pid : all_pids)
+        {
+            pids_str += std::to_string(pid) + ", ";
+        }
+        PLOG_VERBOSE << "PIDs for " << app << ": " << pids_str;
     }
 }
 
+static plog::ColorConsoleAppender<KWPlogFormatter> consoleAppender;
+
 int main(int argc, char **argv)
 {
-    std::cout << "starting background mode" << std::endl;
+    // set up logging
+    plog::init(plog::verbose, &consoleAppender);
+
+    PLOG_INFO << "starting batterything";
+
+    // handle control-c
+    signal(SIGINT, [](int signum)
+           {
+            PLOG_INFO << "caught SIGINT, exiting";
+            // we can't easily remove the cgroups, so just set the limit to 0
+            for (size_t i = 0; i < apps.size(); i++)
+            {
+                try{
+                std::string unitname = "batterything-" + appnames[i] + ".scope";
+                // TODO: this function can create the cgroup if it doesn't exist, which isn't ideal since we're exiting
+                setgroupcpulimit(app_pids[apps[i]], unitname, 0);
+                }
+                catch(std::exception &e)
+                {
+                    PLOG_ERROR << "error while removing cgroup for " << apps[i] << ": " << e.what();
+                }
+            }
+            PLOG_INFO << "exiting";
+        exit(0); });
+
     WindowFocusDetector wfd;
 
-    std::vector<std::string> apps_in = {"/usr/bin/discord", "/usr/bin/slack"};
+    std::vector<std::string> apps_in = {"/usr/bin/slack", "/usr/lib/firefox-developer-edition/firefox"};
     for (auto app : apps_in)
     {
         std::pair<std::filesystem::path, std::string> apppaths = getapppath(app);
         std::filesystem::path apppathpathreal = apppaths.first;
         apps.push_back(apppathpathreal.string());
         appnames.push_back(apppaths.second);
+        PLOG_VERBOSE << "added " << app << " as " << apppaths.second;
     }
-    std::cout << "resolved apps: " << std::endl;
-    for (auto app : apps)
-    {
-        std::cout << app << std::endl;
-    }
+
     update_pids();
     std::chrono::time_point<std::chrono::system_clock> last_pid_update = std::chrono::system_clock::now();
 
     // set up initial cgroups
     for (size_t i = 0; i < apps.size(); i++)
     {
+        if (app_pids[apps[i]].size() == 0)
+        {
+            continue;
+        }
         std::string unitname = "batterything-" + appnames[i] + ".scope";
-        if (doesunitexist(unitname))
-        {
-            std::cout << "updating cgroup for " << apps[i] << std::endl;
-            updatecgroup(std::vector<uint32_t>(app_pids[apps[i]].begin(), app_pids[apps[i]].end()), unitname, 0.5);
-        }
-        else
-        {
-            std::cout << "creating cgroup for " << apps[i] << std::endl;
-            add_pids_to_new_cgroup(std::vector<uint32_t>(app_pids[apps[i]].begin(), app_pids[apps[i]].end()), unitname, 0.5);
-        }
+        setgroupcpulimit(app_pids[apps[i]], unitname, 0.5);
     }
     std::string last_active_app = "";
     int last_active_app_index = -1;
@@ -90,9 +122,18 @@ int main(int argc, char **argv)
             std::cout << "active pid is not in any managed apps" << std::endl;
             if (last_active_app != "")
             {
+                // last active app may have been closed, so this could fail
                 std::cout << "switched out of " << last_active_app << std::endl;
                 std::string unitname = "batterything-" + appnames[last_active_app_index] + ".scope";
-                updatecgroup(std::vector<uint32_t>(app_pids[last_active_app].begin(), app_pids[last_active_app].end()), unitname, 0.5);
+                try
+                {
+                    setgroupcpulimit(app_pids[last_active_app], unitname, 0.5);
+                }
+                catch (std::exception &e)
+                {
+                    std::cout << "failed to update cgroup for " << last_active_app << std::endl;
+                    std::cout << e.what() << std::endl;
+                }
             }
         }
         else
@@ -101,7 +142,7 @@ int main(int argc, char **argv)
             {
                 std::cout << "switched to " << active_app << std::endl;
                 std::string unitname = "batterything-" + appnames[active_app_index] + ".scope";
-                updatecgroup(std::vector<uint32_t>(app_pids[active_app].begin(), app_pids[active_app].end()), unitname, 2.0);
+                setgroupcpulimit(app_pids[active_app], unitname, 0);
             }
         }
         last_active_app = active_app;

@@ -175,5 +175,10 @@ std::pair<std::filesystem::path, std::string> getapppath(std::string apppath)
     std::string appname = apppathpathreal.filename().string();
     // make appname lowercase
     std::transform(appname.begin(), appname.end(), appname.begin(), ::tolower);
+
+    // remove dashes and underscores
+    appname.erase(std::remove(appname.begin(), appname.end(), '-'), appname.end());
+    appname.erase(std::remove(appname.begin(), appname.end(), '_'), appname.end());
+
     return std::make_pair(apppathpathreal, appname);
 }

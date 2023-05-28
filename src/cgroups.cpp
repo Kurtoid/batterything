@@ -3,12 +3,13 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <set>
 
 #define busname "org.freedesktop.systemd1"
 #define objectpath "/org/freedesktop/systemd1"
 #define interface "org.freedesktop.systemd1.Manager"
 
-int add_pids_to_new_cgroup(std::vector<uint32_t> pids, std::string cgroup_name, double cpu_limit)
+int add_pids_to_new_cgroup(std::set<uint32_t> pids, std::string cgroup_name)
 {
     // https://www.freedesktop.org/wiki/Software/systemd/ControlGroupInterface/
     // https://unix.stackexchange.com/questions/525740/how-do-i-create-a-systemd-scope-for-an-already-existing-process-from-the-command
@@ -25,9 +26,7 @@ int add_pids_to_new_cgroup(std::vector<uint32_t> pids, std::string cgroup_name, 
 
     std::cout<<"created method call"<<std::endl;
 
-
-    const char* failmode = "fail";
-    int numprops = 1;
+    const char *failmode = "fail";
     const char* propname = "PIDs";
 
     method_call << cgroup_name << failmode;
@@ -35,16 +34,8 @@ int add_pids_to_new_cgroup(std::vector<uint32_t> pids, std::string cgroup_name, 
     // a(sv) is an array of structs, each struct has a string and a variant
     // here, the string is "PIDs" and the variant is an array of ints
 
-    auto pid_props = sdbus::Struct<std::string, std::vector<unsigned int>>(propname, pids);
-    // method_call << std::vector<sdbus::Struct<std::string, sdbus::Variant>>({pid_props});
+    auto pid_props = sdbus::Struct<std::string, std::vector<unsigned int>>(propname, std::vector<unsigned int>(pids.begin(), pids.end()));
     auto props_array = std::vector<sdbus::Struct<std::string, sdbus::Variant>>({pid_props});
-    // limit CPU
-    // 200 ms, or 20% of one cpu
-    unsigned long quota = cpu_limit * 1000000; // if percent=0.2, then quota=200000
-    unsigned long max_quota = UINT64_MAX;
-    if (cpu_limit == 0)
-        quota = max_quota;
-    props_array.push_back(sdbus::Struct<std::string, sdbus::Variant>("CPUQuotaPerSecUSec", quota));
     method_call << props_array;
 
     // rest is unused
@@ -58,7 +49,7 @@ int add_pids_to_new_cgroup(std::vector<uint32_t> pids, std::string cgroup_name, 
     return 0;
 }
 
-bool updatecgroup(std::vector<uint32_t> pids, std::string unitpath, double cpu_limit)
+bool updatecgroup(std::string unitpath, double cpu_limit)
 {
     const char *method = "SetUnitProperties";
     // sba(sv)
@@ -136,4 +127,15 @@ std::string getunitpath(std::string name)
 bool doesunitexist(std::string name)
 {
     return getunitpath(name) != "";
+}
+
+bool setgroupcpulimit(std::set<uint32_t> app_pids, std::string unitname, double cpulimit)
+{
+    if (!doesunitexist(unitname))
+    {
+        add_pids_to_new_cgroup(app_pids, unitname);
+    }
+    updatecgroup(unitname, cpulimit);
+    // TODO: make sure the above worked
+    return true;
 }

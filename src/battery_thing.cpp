@@ -82,18 +82,7 @@ int main(int argc, char **argv)
     }
     std::cout << std::endl;
 
-    if (doesunitexist(unitname))
-    {
-        std::cout << "updating cgroup..." << std::endl;
-        updatecgroup(std::vector<uint32_t>(childrenpids2.begin(), childrenpids2.end()), unitname, cpulimitdouble);
-        std::cout << "done" << std::endl;
-    }
-    else
-    {
-        std::cout << "creating cgroup..." << std::endl;
-        add_pids_to_new_cgroup(std::vector<uint32_t>(childrenpids2.begin(), childrenpids2.end()), unitname, cpulimitdouble);
-        std::cout << "done" << std::endl;
-    }
+    setgroupcpulimit(childrenpids2, unitname, cpulimitdouble);
 
     std::cout << "done" << std::endl;
 }
