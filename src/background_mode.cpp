@@ -27,7 +27,7 @@ void update_pids()
         std::set<uint32_t> pids = getpidsforexec(app);
         std::set<uint32_t> all_pids = getallchildren(pids);
         all_pids.insert(pids.begin(), pids.end());
-
+        app_pids[app] = all_pids;
         PLOG_INFO << "Found " << all_pids.size() << " PIDs for " << app;
         std::string pids_str = "";
         for (auto pid : all_pids)
@@ -101,12 +101,12 @@ int main(int argc, char **argv)
         // update PIDs every 10 seconds
         if (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - last_pid_update).count() > 10)
         {
-            std::cout << "updating pids" << std::endl;
+            PLOG_VERBOSE << "updating PIDs";
             update_pids();
             last_pid_update = std::chrono::system_clock::now();
         }
         uint32_t activepid = wfd.getActiveWindowPID();
-        std::cout << "active pid: " << activepid << std::endl;
+        PLOG_VERBOSE << "active pid: " << activepid;
         // check if active pid is in any of the app_pids
         for (size_t i = 0; i < apps.size(); i++)
         {
@@ -114,16 +114,17 @@ int main(int argc, char **argv)
             {
                 active_app = apps[i];
                 active_app_index = i;
+                break;
             }
         }
         // did we switch out of a managed app?
         if (active_app == "")
         {
-            std::cout << "active pid is not in any managed apps" << std::endl;
+            PLOG_VERBOSE << "active pid is not in any managed apps";
             if (last_active_app != "")
             {
                 // last active app may have been closed, so this could fail
-                std::cout << "switched out of " << last_active_app << std::endl;
+                PLOG_INFO << "switched out of " << last_active_app;
                 std::string unitname = "batterything-" + appnames[last_active_app_index] + ".scope";
                 try
                 {
@@ -131,8 +132,7 @@ int main(int argc, char **argv)
                 }
                 catch (std::exception &e)
                 {
-                    std::cout << "failed to update cgroup for " << last_active_app << std::endl;
-                    std::cout << e.what() << std::endl;
+                    PLOG_WARNING << "failed to update cgroup for " << last_active_app << ": " << e.what();
                 }
             }
         }
@@ -140,7 +140,7 @@ int main(int argc, char **argv)
         {
             if (last_active_app != active_app)
             {
-                std::cout << "switched to " << active_app << std::endl;
+                PLOG_INFO << "switched to " << active_app;
                 std::string unitname = "batterything-" + appnames[active_app_index] + ".scope";
                 setgroupcpulimit(app_pids[active_app], unitname, 0);
             }
