@@ -1,0 +1,3 @@
+Github won't link to external submodules for some reason. My modified plog can be found [here](https://git.kurtw.dev/plog) (or on [GitHub](https://github.com/kurtoid/plog)). It's not required to build the project; if it's missing, CMake will try to use the system's plog. You can also put the stock plog in the extern directory and that will work.
+
+I added an extra `getFilename()` function to `Record` that returns just the filename of the source file, without the path. I wrapped in an `#ifdef` so the original plog will still work.
