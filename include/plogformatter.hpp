@@ -5,23 +5,19 @@
 #include <plog/Record.h>
 #include <iomanip>
 
+// check if record has a getFilename() method
+#ifdef PLOG_HAVE_FILENAME
+#define getFilename record.getFilename()
+#else
+#define getFilename record.getFile()
+#endif
+
 class KWPlogFormatter
 {
 public:
-    static plog::util::nstring header()
-    {
-        return plog::util::nstring();
-    }
+    static plog::util::nstring header();
 
-    static plog::util::nstring format(const plog::Record &record)
-    {
-        plog::util::nostringstream ss;
-        ss << std::setfill(PLOG_NSTR(' ')) << std::setw(5) << std::left << severityToString(record.getSeverity()) << PLOG_NSTR(" ");
-        ss << PLOG_NSTR("[") << record.getFilename() << PLOG_NSTR(":") << record.getLine() << PLOG_NSTR("] ");
-        ss << record.getMessage() << PLOG_NSTR("\n");
-
-        return ss.str();
-    }
+    static plog::util::nstring format(const plog::Record &record);
 };
 
 #endif // BATTERYTHING_PLOGFORMATTER_HPP

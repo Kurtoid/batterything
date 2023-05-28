@@ -9,8 +9,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # set sdbus-c++ module path
 find_package(sdbus-c++ REQUIRED)
 find_package(X11 REQUIRED)
-# use plog from extern folder
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/extern/plog/include)
+# use plog from extern folder, only if it exists (otherwise, the system plog will be used)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/plog/include)
+    message(STATUS "Using plog from extern folder")
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/extern/plog/include)
+else()
+    message(STATUS "Using plog from system")
+endif()
 
 add_library(processes ${CMAKE_CURRENT_SOURCE_DIR}/src/processes.cpp)
 
