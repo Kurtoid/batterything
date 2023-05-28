@@ -1,3 +1,3 @@
-[submodule "plog"]
+[submodule "extern/plog"]
 	path = extern/plog
 	url = https://git.kurtw.dev/kurtoid/plog.git
