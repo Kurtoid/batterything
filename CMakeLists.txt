@@ -31,6 +31,7 @@ add_library(kwplogformatter ${CMAKE_CURRENT_SOURCE_DIR}/src/plogformatter.cpp)
 add_library(battery_thing_cgroups ${CMAKE_CURRENT_SOURCE_DIR}/src/cgroups.cpp)
 target_link_libraries(battery_thing_cgroups PUBLIC
     sdbus-c++
+    kwplogformatter
 )
 
 add_executable(battery_thing ${CMAKE_CURRENT_SOURCE_DIR}/src/battery_thing.cpp)

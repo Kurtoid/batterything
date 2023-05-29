@@ -13,7 +13,6 @@
 #define PLOG_CAPTURE_FILE
 #include <plog/Init.h>
 #include <plog/Log.h>
-#include <plog/Appenders/ColorConsoleAppender.h>
 
 std::vector<std::string> apps = {};
 std::vector<std::string> appnames = {};
@@ -37,8 +36,6 @@ void update_pids()
         PLOG_VERBOSE << "PIDs for " << app << ": " << pids_str;
     }
 }
-
-static plog::ColorConsoleAppender<KWPlogFormatter> consoleAppender;
 
 int main(int argc, char **argv)
 {

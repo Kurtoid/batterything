@@ -4,6 +4,8 @@
 #include <plog/Util.h>
 #include <plog/Record.h>
 #include <iomanip>
+#include <plog/Log.h>
+#include <plog/Appenders/ColorConsoleAppender.h>
 
 // check if record has a getFilename() method
 #ifdef PLOG_HAVE_FILENAME
@@ -19,5 +21,7 @@ public:
 
     static plog::util::nstring format(const plog::Record &record);
 };
+
+static plog::ColorConsoleAppender<KWPlogFormatter> consoleAppender;
 
 #endif // BATTERYTHING_PLOGFORMATTER_HPP

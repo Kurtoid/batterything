@@ -4,6 +4,8 @@
 #include <string>
 #include <iostream>
 #include <set>
+#include <plog/Log.h>
+#include "plogformatter.hpp"
 
 #define busname "org.freedesktop.systemd1"
 #define objectpath "/org/freedesktop/systemd1"
@@ -19,12 +21,9 @@ int add_pids_to_new_cgroup(std::set<uint32_t> pids, std::string cgroup_name)
     const char* method = "StartTransientUnit";
 
     // create a proxy object using a system bus connection
-    std::cout<<"Creating proxy..."<<std::endl;
     auto connection = sdbus::createSystemBusConnection();
     auto proxy = sdbus::createProxy(*connection, busname, objectpath);
     auto method_call = proxy->createMethodCall(interface, method);
-
-    std::cout<<"created method call"<<std::endl;
 
     const char *failmode = "fail";
     const char* propname = "PIDs";
@@ -42,9 +41,8 @@ int add_pids_to_new_cgroup(std::set<uint32_t> pids, std::string cgroup_name)
     std::vector<sdbus::Struct<std::string, std::vector<sdbus::Struct<std::string, sdbus::Variant>>>> props2;
     method_call << props2;
 
-    std::cout<<"Calling method..."<<std::endl;
+    LOG_VERBOSE << "creating unit " << cgroup_name << " with PIDs " << pids;
     auto result = proxy->callMethod(method_call);
-    std::cout<<"Method called."<<std::endl;
 
     return 0;
 }
@@ -79,6 +77,7 @@ bool updatecgroup(std::string unitpath, double cpu_limit)
     props_array.push_back(sdbus::Struct<std::string, sdbus::Variant>("CPUQuotaPerSecUSec", quota));
     method_call << props_array;
 
+    LOG_VERBOSE << "updating unit " << unitpath << " with CPU limit " << cpu_limit;
     auto result = proxy->callMethod(method_call);
 
     return true;
@@ -103,7 +102,6 @@ std::string getunitpath(std::string name)
         // output: o
         // o is the object path of the unit
         result >> path;
-        std::cout << "Unit path: " << std::string(path) << std::endl;
         return std::string(path);
     }
     catch (sdbus::Error &e)
@@ -112,13 +110,12 @@ std::string getunitpath(std::string name)
         // make sure the error is "org.freedesktop.systemd1.NoSuchUnit"
         if (e.getName() == "org.freedesktop.systemd1.NoSuchUnit")
         {
-            std::cout << "Unit does not exist: " << name << std::endl;
             return "";
         }
         else
         {
-            std::cout << "Error: " << e.getName() << std::endl;
-            std::cout << e.getMessage() << std::endl;
+            LOG_WARNING << "Error: " << e.getName() << std::endl;
+            LOG_WARNING << e.getMessage() << std::endl;
             return "";
         }
     }

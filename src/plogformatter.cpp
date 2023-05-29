@@ -1,4 +1,5 @@
 #include "plogformatter.hpp"
+#include <plog/Appenders/ColorConsoleAppender.h>
 
 plog::util::nstring KWPlogFormatter::format(const plog::Record &record)
 {
