@@ -1,5 +1,6 @@
 #ifndef BATTERYTHING_PLOGFORMATTER_HPP
 #define BATTERYTHING_PLOGFORMATTER_HPP
+#define PLOG_CAPTURE_FILE
 
 #include <plog/Util.h>
 #include <plog/Record.h>
@@ -8,7 +9,7 @@
 #include <plog/Appenders/ColorConsoleAppender.h>
 
 // check if record has a getFilename() method
-#ifdef PLOG_HAVE_FILENAME
+#if PLOG_HAVE_FILENAME
 #define getFilename record.getFilename()
 #else
 #define getFilename record.getFile()

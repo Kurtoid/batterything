@@ -4,8 +4,8 @@
 #include <string>
 #include <iostream>
 #include <set>
-#include <plog/Log.h>
 #include "plogformatter.hpp"
+#include <plog/Log.h>
 
 #define busname "org.freedesktop.systemd1"
 #define objectpath "/org/freedesktop/systemd1"

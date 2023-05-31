@@ -10,7 +10,6 @@
 #include <chrono>
 // signal handling
 #include <csignal>
-#define PLOG_CAPTURE_FILE
 #include <plog/Init.h>
 #include <plog/Log.h>
 
@@ -43,6 +42,7 @@ int main(int argc, char **argv)
     plog::init(plog::verbose, &consoleAppender);
 
     PLOG_INFO << "starting batterything";
+    PLOG_INFO << "PLOG_HAVE_FILENAME: " << PLOG_HAVE_FILENAME;
 
     // handle control-c
     signal(SIGINT, [](int signum)
@@ -66,7 +66,7 @@ int main(int argc, char **argv)
 
     WindowFocusDetector wfd;
 
-    std::vector<std::string> apps_in = {"/usr/bin/slack", "/usr/lib/firefox-developer-edition/firefox"};
+    std::vector<std::string> apps_in = {"/usr/bin/slack", "/usr/lib/firefox-developer-edition/firefox", "/usr/bin/discord"};
     for (auto app : apps_in)
     {
         std::pair<std::filesystem::path, std::string> apppaths = getapppath(app);
