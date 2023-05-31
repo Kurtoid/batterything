@@ -13,6 +13,9 @@
 #include <plog/Init.h>
 #include <plog/Log.h>
 
+// TODO: these should not be defines
+#define BACKGROUND_CPU 0.25
+
 std::vector<std::string> apps = {};
 std::vector<std::string> appnames = {};
 std::map<std::string, std::set<uint32_t>> app_pids;
@@ -26,13 +29,16 @@ void update_pids()
         std::set<uint32_t> all_pids = getallchildren(pids);
         all_pids.insert(pids.begin(), pids.end());
         app_pids[app] = all_pids;
-        PLOG_INFO << "Found " << all_pids.size() << " PIDs for " << app;
-        std::string pids_str = "";
-        for (auto pid : all_pids)
+        PLOG_DEBUG << "Found " << all_pids.size() << " PIDs for " << app;
+        IF_PLOG(plog::verbose)
         {
-            pids_str += std::to_string(pid) + ", ";
+            std::string pids_str = "";
+            for (auto pid : all_pids)
+            {
+                pids_str += std::to_string(pid) + ", ";
+            }
+            PLOG_VERBOSE << "PIDs for " << app << ": " << pids_str;
         }
-        PLOG_VERBOSE << "PIDs for " << app << ": " << pids_str;
     }
 }
 
@@ -42,7 +48,6 @@ int main(int argc, char **argv)
     plog::init(plog::verbose, &consoleAppender);
 
     PLOG_INFO << "starting batterything";
-    PLOG_INFO << "PLOG_HAVE_FILENAME: " << PLOG_HAVE_FILENAME;
 
     // handle control-c
     signal(SIGINT, [](int signum)
@@ -87,7 +92,7 @@ int main(int argc, char **argv)
             continue;
         }
         std::string unitname = "batterything-" + appnames[i] + ".scope";
-        setgroupcpulimit(app_pids[apps[i]], unitname, 0.5);
+        setgroupcpulimit(app_pids[apps[i]], unitname, BACKGROUND_CPU);
     }
     std::string last_active_app = "";
     int last_active_app_index = -1;
@@ -125,7 +130,7 @@ int main(int argc, char **argv)
                 std::string unitname = "batterything-" + appnames[last_active_app_index] + ".scope";
                 try
                 {
-                    setgroupcpulimit(app_pids[last_active_app], unitname, 0.5);
+                    setgroupcpulimit(app_pids[last_active_app], unitname, BACKGROUND_CPU);
                 }
                 catch (std::exception &e)
                 {

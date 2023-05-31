@@ -4,6 +4,8 @@
 #include <regex>
 #include <filesystem>
 #include <set>
+#include "plogformatter.hpp"
+#include <plog/Log.h>
 
 std::string getstatline(std::filesystem::path stat_path)
 {
@@ -51,6 +53,7 @@ std::set<uint32_t> getpidsforexec(std::string name)
         catch (std::filesystem::filesystem_error &e)
         {
             // this is not a /proc/pid, or permission denied
+            PLOG_DEBUG << "error reading " << entry.path() << ": " << e.what();
             continue;
         }
     }
@@ -121,24 +124,34 @@ std::set<uint32_t> getchildrenpids(uint32_t pid)
         std::filesystem::path path("/proc");
         path /= std::to_string(pid);
         path /= "task";
-        // find subfolders
-        for (const auto &entry : std::filesystem::directory_iterator(path))
+        try
         {
-            // std::cout << entry.path() << std::endl;
-            if (entry.is_directory())
+            // find subfolders
+            for (const auto &entry : std::filesystem::directory_iterator(path))
             {
-                uint32_t childpid = atoi(entry.path().filename().c_str());
-                if (childpid == 0)
+                // std::cout << entry.path() << std::endl;
+                if (entry.is_directory())
                 {
-                    continue;
+                    uint32_t childpid = atoi(entry.path().filename().c_str());
+                    if (childpid == 0)
+                    {
+                        continue;
+                    }
+                    if (childrenpids.find(childpid) != childrenpids.end())
+                    {
+                        continue;
+                    }
+                    childrenpids.insert(childpid);
+                    pids_to_check.push_back(childpid);
                 }
-                if (childrenpids.find(childpid) != childrenpids.end())
-                {
-                    continue;
-                }
-                childrenpids.insert(childpid);
-                pids_to_check.push_back(childpid);
             }
+        }
+        catch (std::filesystem::filesystem_error &e)
+        {
+            // tasks can be short-lived, so it's possible that the task folder
+            // doesn't exist anymore
+            PLOG_DEBUG << "couldn't list tasks for " << pid << ": " << e.what();
+            continue;
         }
     }
     return childrenpids;
